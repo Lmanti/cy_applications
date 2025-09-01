@@ -16,8 +16,8 @@ import lombok.Setter;
 public class Application {
     private UUID applicationId;
     private Long userIdNumber;
-    private Integer loanAmount;
-    private Integer loanTerm;
+    private Double loanAmount;
+    private Double loanTerm;
     private Integer loanTypeId;
     private Integer loanStatusId;
 }
