@@ -17,8 +17,10 @@ CREATE TABLE loan_type (
     auto_validation BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 CREATE TABLE applications (
-    application_id UUID PRIMARY KEY,
+    application_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id_number BIGINT NOT NULL,
     loan_amount NUMERIC(12, 2) NOT NULL,
     loan_term NUMERIC(5, 2) NOT NULL,

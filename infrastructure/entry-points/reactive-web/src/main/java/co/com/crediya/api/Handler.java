@@ -24,7 +24,7 @@ public class Handler {
         return serverRequest.bodyToMono(CreateApplicationDTO.class)
             .map(applicationMapper::toModel)
             .transform(applicationUseCase::saveApplication)
-            .flatMap(createdApplication -> ServerResponse.created(URI.create("/applicationDetails/" + createdApplication.getApplicationId()))
+            .flatMap(createdApplication -> ServerResponse.created(URI.create("/applicationDetails/" + createdApplication.applicationId()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(createdApplication));
     }

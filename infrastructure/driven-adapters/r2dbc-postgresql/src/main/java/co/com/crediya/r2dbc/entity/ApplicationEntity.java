@@ -25,25 +25,11 @@ public class ApplicationEntity {
     @Column("user_id_number")
     private Long userIdNumber;
     @Column("loan_amount")
-    private Integer loanAmount;
+    private Double loanAmount;
     @Column("loan_term")
-    private Integer loanTerm;
+    private Double loanTerm;
     @Column("loan_type_id")
     private Integer loanTypeId;
     @Column("loan_status_id")
     private Integer loanStatusId;
-
-    public ApplicationEntity(Long userIdNumber,
-        Integer loanAmount,
-        Integer loanTerm, 
-        Integer loanTypeId,
-        Integer loanStatusId
-    ) {
-        this.applicationId = UUID.randomUUID();
-        this.userIdNumber = userIdNumber;
-        this.loanAmount = loanAmount;
-        this.loanTerm = loanTerm;
-        this.loanTypeId = loanTypeId;
-        this.loanStatusId = loanStatusId;
-    }
 }

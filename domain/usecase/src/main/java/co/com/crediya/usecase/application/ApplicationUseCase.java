@@ -24,7 +24,7 @@ public class ApplicationUseCase {
     private final UserGateway userGateway;
 
     private enum LoanStatuses {
-        PENDIENTE(2);
+        PENDIENTE(1);
 
         private final int value;
 
@@ -38,15 +38,13 @@ public class ApplicationUseCase {
     }
 
     public Flux<ApplicationRecord> getAllApplications() {
-        Mono<Map<Integer, LoanType>> loanTypeMapMono = loanTypeRepository.getAllLoanTypes()
-            .collectMap(LoanType::getLoanTypeId);
-        Mono<Map<Integer, LoanStatus>> loanStatusMapMono = loanStatusRepository.getAllLoanStatuses()
-            .collectMap(LoanStatus::getLoanStatusId);
-
-        return Flux.zip(loanTypeMapMono, loanStatusMapMono)
-            .flatMap(tuple -> {
-                Map<Integer, LoanType> loanTypeMap = tuple.getT1();
-                Map<Integer, LoanStatus> loanStatusMap = tuple.getT2();
+        return Flux.zip(
+                loanTypeRepository.getAllLoanTypes().collectMap(LoanType::getLoanTypeId),
+                loanStatusRepository.getAllLoanStatuses().collectMap(LoanStatus::getLoanStatusId)
+            )
+            .flatMap(params -> {
+                Map<Integer, LoanType> loanTypeMap = params.getT1();
+                Map<Integer, LoanStatus> loanStatusMap = params.getT2();
 
                 return applicationRepository.getAllApplications()
                     .map(application -> new ApplicationRecord(
@@ -60,15 +58,13 @@ public class ApplicationUseCase {
     }
 
     public Flux<ApplicationRecord> getApplicationsByUserIdNumber(Long userIdNumber) {
-        Mono<Map<Integer, LoanType>> loanTypeMapMono = loanTypeRepository.getAllLoanTypes()
-            .collectMap(LoanType::getLoanTypeId);
-        Mono<Map<Integer, LoanStatus>> loanStatusMapMono = loanStatusRepository.getAllLoanStatuses()
-            .collectMap(LoanStatus::getLoanStatusId);
-
-        return Flux.zip(loanTypeMapMono, loanStatusMapMono)
-            .flatMap(tuple -> {
-                Map<Integer, LoanType> loanTypeMap = tuple.getT1();
-                Map<Integer, LoanStatus> loanStatusMap = tuple.getT2();
+        return Flux.zip(
+                loanTypeRepository.getAllLoanTypes().collectMap(LoanType::getLoanTypeId),
+                loanStatusRepository.getAllLoanStatuses().collectMap(LoanStatus::getLoanStatusId)
+            )
+            .flatMap(params -> {
+                Map<Integer, LoanType> loanTypeMap = params.getT1();
+                Map<Integer, LoanStatus> loanStatusMap = params.getT2();
 
                 return applicationRepository.getApplicationsByUserIdNumber(userIdNumber)
                     .map(application -> new ApplicationRecord(
@@ -82,15 +78,13 @@ public class ApplicationUseCase {
     }
 
     public Mono<ApplicationRecord> getApplicationsByApplicationId(UUID applicationId) {
-        Mono<Map<Integer, LoanType>> loanTypeMapMono = loanTypeRepository.getAllLoanTypes()
-            .collectMap(LoanType::getLoanTypeId);
-        Mono<Map<Integer, LoanStatus>> loanStatusMapMono = loanStatusRepository.getAllLoanStatuses()
-            .collectMap(LoanStatus::getLoanStatusId);
-
-        return Mono.zip(loanTypeMapMono, loanStatusMapMono)
-            .flatMap(tuple -> {
-                Map<Integer, LoanType> loanTypeMap = tuple.getT1();
-                Map<Integer, LoanStatus> loanStatusMap = tuple.getT2();
+        return Mono.zip(
+                loanTypeRepository.getAllLoanTypes().collectMap(LoanType::getLoanTypeId),
+                loanStatusRepository.getAllLoanStatuses().collectMap(LoanStatus::getLoanStatusId)
+            )
+            .flatMap(params -> {
+                Map<Integer, LoanType> loanTypeMap = params.getT1();
+                Map<Integer, LoanStatus> loanStatusMap = params.getT2();
 
                 return applicationRepository.getApplicationsByApplicationId(applicationId)
                     .map(application -> new ApplicationRecord(
@@ -102,27 +96,29 @@ public class ApplicationUseCase {
                         loanStatusMap.get(application.getLoanStatusId())));
             });
     }
-    
-    public Mono<Application> saveApplication(Mono<Application> application) {
-        return application
-            .flatMap(toSave ->
-                loanTypeRepository.getLoanTypeById(toSave.getLoanTypeId()).hasElement()
-                    .zipWith(userGateway.existByIdNumber(toSave.getUserIdNumber()))
-                    .flatMap(exists -> {
-                        Boolean loanTypeExist = exists.getT1();
-                        Boolean userExist = exists.getT2();
 
-                        if (!loanTypeExist) {
-                            return Mono.error(new InvalidDataException("No existe un tipo de préstamo con id " + toSave.getLoanTypeId()));
-                        }
-                        
-                        if (!userExist) {
-                            return Mono.error(new InvalidDataException("No existe un usuario con número de identificación " + toSave.getUserIdNumber()));
-                        }
+    public Mono<ApplicationRecord> saveApplication(Mono<Application> application) {
+        return application.flatMap(toSave ->
+            Mono.zip(
+                loanTypeRepository.getLoanTypeById(toSave.getLoanTypeId()),
+                userGateway.existByIdNumber(toSave.getUserIdNumber())
+            )
+            .zipWith(loanStatusRepository.getLoanStatusById(LoanStatuses.PENDIENTE.getValue()))
+            .flatMap(params -> {
+                Boolean userExist = params.getT1().getT2();
 
-                        toSave.setLoanStatusId(LoanStatuses.PENDIENTE.getValue());
-                        return applicationRepository.saveApplication(Mono.just(toSave));
-                    })
+                if (!userExist) return Mono.error(new InvalidDataException("No existe un usuario con número de identificación " + toSave.getUserIdNumber()));
+
+                toSave.setLoanStatusId(params.getT2().getLoanStatusId());
+                return applicationRepository.saveApplication(Mono.just(toSave))
+                    .map(savedApplication -> new ApplicationRecord(
+                        savedApplication.getApplicationId(),
+                        savedApplication.getUserIdNumber(),
+                        savedApplication.getLoanAmount(),
+                        savedApplication.getLoanTerm(),
+                        params.getT1().getT1(),
+                        params.getT2()));
+            })
         );
     }
 }

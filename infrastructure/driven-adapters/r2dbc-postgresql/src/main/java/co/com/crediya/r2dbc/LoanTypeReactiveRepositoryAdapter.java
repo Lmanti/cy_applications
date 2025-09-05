@@ -4,10 +4,10 @@ import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import co.com.crediya.model.application.exception.DataRetrievalException;
 import co.com.crediya.model.loantype.LoanType;
 import co.com.crediya.model.loantype.gateways.LoanTypeRepository;
 import co.com.crediya.r2dbc.entity.LoanTypeEntity;
-import co.com.crediya.r2dbc.exception.DataRetrievalException;
 import co.com.crediya.r2dbc.helper.ReactiveAdapterOperations;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
@@ -32,7 +32,7 @@ public class LoanTypeReactiveRepositoryAdapter extends ReactiveAdapterOperations
     
         return findAll()
             .doOnNext(loanType
-             -> log.debug("Retrieved loan types successfully"))
+                -> log.debug("Retrieved loan types successfully"))
             .doOnComplete(() -> log.info("Finished retrieving all loan types"))
             .onErrorMap(ex -> {
                 log.error("Error retrieving all loan types", ex);

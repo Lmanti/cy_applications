@@ -24,7 +24,7 @@ public class LoanTypeEntity {
     private String name;
     @Column("min_amount")
     private Double minAmount;
-    @Column("max_amoun")
+    @Column("max_amount")
     private Double maxAmount;
     @Column("interest_rate")
     private Double interestRate;

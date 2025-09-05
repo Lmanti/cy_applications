@@ -1,4 +1,4 @@
-package co.com.crediya.r2dbc.exception;
+package co.com.crediya.model.application.exception;
 
 public class DataPersistenceException extends RuntimeException {
     public DataPersistenceException() {
