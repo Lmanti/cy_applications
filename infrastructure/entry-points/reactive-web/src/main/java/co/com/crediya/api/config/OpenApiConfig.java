@@ -15,14 +15,14 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
-                // .components(new Components()
-                //         .addSecuritySchemes("bearer-jwt",
-                //                 new SecurityScheme()
-                //                         .type(SecurityScheme.Type.HTTP)
-                //                         .scheme("bearer")
-                //                         .bearerFormat("JWT")
-                //                         .in(SecurityScheme.In.HEADER)
-                //                         .name("Authorization")))
+                .components(new Components()
+                        .addSecuritySchemes("bearer-jwt",
+                                new SecurityScheme()
+                                        .type(SecurityScheme.Type.HTTP)
+                                        .scheme("bearer")
+                                        .bearerFormat("JWT")
+                                        .in(SecurityScheme.In.HEADER)
+                                        .name("Authorization")))
                 .info(new Info()
                         .title("API de Solicitudes")
                         .description("API para la gestión de solicitudes")

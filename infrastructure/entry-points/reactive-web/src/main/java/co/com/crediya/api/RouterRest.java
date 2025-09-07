@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
@@ -53,6 +54,7 @@ public class RouterRest {
                 tags = {"Solicitudes"},
                 summary = "Crear una nueva solicitud de crédito",
                 description = "Crea una nueva solicitud de crédito en el sistema",
+                security = { @SecurityRequirement(name = "bearer-jwt") },
                 requestBody = @RequestBody(
                     required = true,
                     content = @Content(schema = @Schema(implementation = CreateApplicationDTO.class))
