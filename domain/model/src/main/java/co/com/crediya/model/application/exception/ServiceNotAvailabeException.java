@@ -1,4 +1,4 @@
-package co.com.crediya.consumer.exception;
+package co.com.crediya.model.application.exception;
 
 public class ServiceNotAvailabeException extends RuntimeException {
     public ServiceNotAvailabeException() {

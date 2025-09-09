@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import co.com.crediya.consumer.exception.ServiceNotAvailabeException;
+import co.com.crediya.model.application.exception.ServiceNotAvailabeException;
 import co.com.crediya.model.application.gateways.UserGateway;
 import reactor.core.publisher.Mono;
 
@@ -19,12 +19,17 @@ public class RestConsumer implements UserGateway {
 
     @CircuitBreaker(name = "existByIdNumber" , fallbackMethod = "existByIdNumberFallback")
     @Override
-    public Mono<Boolean> existByIdNumber(Long userIdNumber) {        
+    public Mono<Boolean> existByIdNumber(Long userIdNumber) {
+        log.info("Validating if user with ID number {} exists", userIdNumber);      
         return client.get()
             .uri(uriBuilder -> 
                 uriBuilder.path("exists/{userIdNumber}").build(userIdNumber))
             .retrieve()
-            .bodyToMono(Boolean.class);
+            .bodyToMono(Boolean.class)
+            .onErrorMap(exception -> {
+                log.error("Error calling user service: {}", exception.getMessage(), exception);
+                return new ServiceNotAvailabeException("User service unavailable", exception);
+            });
     }
 
     public Mono<Boolean> existByIdNumberFallback(Long userIdNumber, Exception e) {

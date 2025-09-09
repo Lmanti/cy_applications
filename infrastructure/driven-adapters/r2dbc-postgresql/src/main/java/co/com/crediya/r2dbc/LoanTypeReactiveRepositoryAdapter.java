@@ -50,6 +50,7 @@ public class LoanTypeReactiveRepositoryAdapter extends ReactiveAdapterOperations
             .doOnNext(entity -> log.debug("Found loan type entity ID number {}", loanTypeId))
             .map(this::toEntity)
             .doOnNext(entity -> log.info("Successfully mapped loan type ID number {}", loanTypeId))
+            .switchIfEmpty(Mono.error(new DataRetrievalException("Tipo de crédito con ID " + loanTypeId + " no encontrado")))
             .onErrorMap(ex -> {
                 log.error("Error retrieving loan type with ID number {}: {}", loanTypeId, ex.getMessage(), ex);
                 return new DataRetrievalException("Error consultando tipo de crédito con ID " + loanTypeId, ex);

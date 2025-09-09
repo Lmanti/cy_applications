@@ -101,23 +101,23 @@ public class ApplicationUseCase {
         return application.flatMap(toSave ->
             Mono.zip(
                 loanTypeRepository.getLoanTypeById(toSave.getLoanTypeId()),
-                userGateway.existByIdNumber(toSave.getUserIdNumber())
+                userGateway.existByIdNumber(toSave.getUserIdNumber()),
+                loanStatusRepository.getLoanStatusById(LoanStatuses.PENDIENTE.getValue())
             )
-            .zipWith(loanStatusRepository.getLoanStatusById(LoanStatuses.PENDIENTE.getValue()))
             .flatMap(params -> {
-                Boolean userExist = params.getT1().getT2();
+                Boolean userExist = params.getT2();
 
                 if (!userExist) return Mono.error(new InvalidDataException("No existe un usuario con número de identificación " + toSave.getUserIdNumber()));
 
-                toSave.setLoanStatusId(params.getT2().getLoanStatusId());
+                toSave.setLoanStatusId(params.getT3().getLoanStatusId());
                 return applicationRepository.saveApplication(Mono.just(toSave))
                     .map(savedApplication -> new ApplicationRecord(
                         savedApplication.getApplicationId(),
                         savedApplication.getUserIdNumber(),
                         savedApplication.getLoanAmount(),
                         savedApplication.getLoanTerm(),
-                        params.getT1().getT1(),
-                        params.getT2()));
+                        params.getT1(),
+                        params.getT3()));
             })
         );
     }

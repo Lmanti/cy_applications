@@ -11,6 +11,7 @@ import org.springframework.web.server.ServerWebExchange;
 import co.com.crediya.api.dto.ErrorResponse;
 import co.com.crediya.model.application.exception.DataPersistenceException;
 import co.com.crediya.model.application.exception.InvalidDataException;
+import co.com.crediya.model.application.exception.ServiceNotAvailabeException;
 
 import java.time.LocalDateTime;
 
@@ -27,6 +28,19 @@ public class GlobalExceptionHandler {
                 path, ex.getMessage(), HttpStatus.BAD_REQUEST, traceId);
         
         return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse));
+    }
+
+    @ExceptionHandler(ServiceNotAvailabeException.class)
+    public Mono<ResponseEntity<ErrorResponse>> handleServiceNotAvailabeException(
+            ServiceNotAvailabeException ex, ServerWebExchange exchange) {
+        
+        String path = exchange.getRequest().getPath().value();
+        String traceId = exchange.getRequest().getId();
+        
+        ErrorResponse errorResponse = buildErrorResponse(
+                path, ex.getMessage(), HttpStatus.FORBIDDEN, traceId);
+        
+        return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse));
     }
     
     @ExceptionHandler(DataPersistenceException.class)

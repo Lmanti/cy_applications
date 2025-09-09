@@ -1,68 +1,97 @@
 package co.com.crediya.consumer;
 
-
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import co.com.crediya.model.application.exception.ServiceNotAvailabeException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClient.RequestHeadersUriSpec;
+import org.springframework.web.reactive.function.client.WebClient.ResponseSpec;
+
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import java.io.IOException;
 
+import java.util.function.Function;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
 class RestConsumerTest {
 
-    private static RestConsumer restConsumer;
+    @Mock
+    private WebClient client;
 
-    private static MockWebServer mockBackEnd;
+    @InjectMocks
+    private RestConsumer restConsumer;
 
+    private Long userIdNumber;
 
-    @BeforeAll
-    static void setUp() throws IOException {
-        mockBackEnd = new MockWebServer();
-        mockBackEnd.start();
-        var webClient = WebClient.builder().baseUrl(mockBackEnd.url("/").toString()).build();
-        restConsumer = new RestConsumer(webClient);
+    @BeforeEach
+    void setUp() {
+        userIdNumber = 123456789L;
     }
 
-    @AfterAll
-    static void tearDown() throws IOException {
-
-        mockBackEnd.shutdown();
-    }
-
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Test
-    @DisplayName("Validate the function testGet.")
-    void validateTestGet() {
+    @DisplayName("Should return true when user exists")
+    void shouldReturnTrueWhenUserExists() {
+        // Arrange
+        RequestHeadersUriSpec requestHeadersUriSpecMock = mock(RequestHeadersUriSpec.class);
+        ResponseSpec responseSpecMock = mock(ResponseSpec.class);
 
-        mockBackEnd.enqueue(new MockResponse()
-                .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .setResponseCode(HttpStatus.OK.value())
-                .setBody("{\"state\" : \"ok\"}"));
-        var response = restConsumer.existByIdNumber(123456789L);
+        when(client.get()).thenReturn(requestHeadersUriSpecMock);
+        when(requestHeadersUriSpecMock.uri(any(Function.class))).thenReturn(requestHeadersUriSpecMock);  // Capture the URI
+        when(requestHeadersUriSpecMock.retrieve()).thenReturn(responseSpecMock);
+        when(responseSpecMock.bodyToMono(Boolean.class)).thenReturn(Mono.just(true));
 
-        StepVerifier.create(response)
-                .expectNextMatches(objectResponse -> objectResponse.equals(false))
-                .verifyComplete();
+        // Act & Assert
+        StepVerifier.create(restConsumer.existByIdNumber(userIdNumber))
+            .expectNext(true)
+            .verifyComplete();
     }
 
-    // @Test
-    // @DisplayName("Validate the function testPost.")
-    // void validateTestPost() {
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @Test
+    @DisplayName("Should return false when user does not exist")
+    void shouldReturnFalseWhenUserDoesNotExist() {
+        // Arrange
+        RequestHeadersUriSpec requestHeadersUriSpecMock = mock(RequestHeadersUriSpec.class);
+        ResponseSpec responseSpecMock = mock(ResponseSpec.class);
 
-    //     mockBackEnd.enqueue(new MockResponse()
-    //             .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-    //             .setResponseCode(HttpStatus.OK.value())
-    //             .setBody("{\"state\" : \"ok\"}"));
-    //     var response = restConsumer.testPost();
+        when(client.get()).thenReturn(requestHeadersUriSpecMock);
+        when(requestHeadersUriSpecMock.uri(any(Function.class))).thenReturn(requestHeadersUriSpecMock);  // Capture the URI
+        when(requestHeadersUriSpecMock.retrieve()).thenReturn(responseSpecMock);
+        when(responseSpecMock.bodyToMono(Boolean.class)).thenReturn(Mono.just(false));
 
-    //     StepVerifier.create(response)
-    //             .expectNextMatches(objectResponse -> objectResponse.getState().equals("ok"))
-    //             .verifyComplete();
-    // }
+        // Act & Assert
+        StepVerifier.create(restConsumer.existByIdNumber(userIdNumber))
+            .expectNext(false)
+            .verifyComplete();
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @Test
+    @DisplayName("Should handle ServiceNotAvailabeException in fallback")
+    void shouldHandleServiceNotAvailabeExceptionInFallback() {
+        // Arrange
+        RuntimeException simulatedException = new RuntimeException("Simulated service unavailable");
+        RequestHeadersUriSpec requestHeadersUriSpecMock = mock(RequestHeadersUriSpec.class);
+        ResponseSpec responseSpecMock = mock(ResponseSpec.class);
+
+        when(client.get()).thenReturn(requestHeadersUriSpecMock);
+        when(requestHeadersUriSpecMock.uri(any(Function.class))).thenReturn(requestHeadersUriSpecMock);
+        when(requestHeadersUriSpecMock.retrieve()).thenReturn(responseSpecMock);
+        when(responseSpecMock.bodyToMono(Boolean.class)).thenReturn(Mono.error(simulatedException));
+
+        // Act & Assert
+        StepVerifier.create(restConsumer.existByIdNumber(userIdNumber))
+            .expectError(ServiceNotAvailabeException.class)
+            .verify();
+    }
 }

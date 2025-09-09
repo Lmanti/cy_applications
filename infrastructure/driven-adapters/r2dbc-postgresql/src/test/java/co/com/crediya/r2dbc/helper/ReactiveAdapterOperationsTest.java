@@ -43,6 +43,7 @@ class ReactiveAdapterOperationsTest {
                 .verifyComplete();
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     void saveAllEntities() {
         DummyEntity entity1 = new DummyEntity("1", "test1");
@@ -71,6 +72,7 @@ class ReactiveAdapterOperationsTest {
                 .verifyComplete();
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     void findByExample() {
         DummyEntity entity = new DummyEntity("1", "test");
