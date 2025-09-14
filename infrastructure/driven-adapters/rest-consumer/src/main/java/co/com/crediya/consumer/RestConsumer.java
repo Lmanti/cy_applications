@@ -9,6 +9,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import co.com.crediya.model.application.exception.ServiceNotAvailabeException;
 import co.com.crediya.model.application.gateways.UserGateway;
+import co.com.crediya.model.application.record.UserBasicInfo;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -26,6 +28,21 @@ public class RestConsumer implements UserGateway {
                 uriBuilder.path("exists/{userIdNumber}").build(userIdNumber))
             .retrieve()
             .bodyToMono(Boolean.class)
+            .onErrorMap(exception -> {
+                log.error("Error calling user service: {}", exception.getMessage(), exception);
+                return new ServiceNotAvailabeException("User service unavailable", exception);
+            });
+    }
+
+    @CircuitBreaker(name = "getAllUsersBasicInfo" , fallbackMethod = "existByIdNumberFallback")
+    @Override
+    public Flux<UserBasicInfo> getAllUsersBasicInfo() {
+        log.info("Attempting to retrieve all users's basic info");      
+        return client.get()
+            .uri(uriBuilder -> 
+                uriBuilder.path("basicInfo").build())
+            .retrieve()
+            .bodyToFlux(UserBasicInfo.class)
             .onErrorMap(exception -> {
                 log.error("Error calling user service: {}", exception.getMessage(), exception);
                 return new ServiceNotAvailabeException("User service unavailable", exception);

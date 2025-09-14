@@ -8,8 +8,11 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 
 import co.com.crediya.api.dto.CreateApplicationDTO;
 import co.com.crediya.model.application.Application;
+import co.com.crediya.model.application.criteria.PageResult;
 import co.com.crediya.model.application.record.ApplicationRecord;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -71,11 +74,79 @@ public class RouterRest {
                     )
                 }
             )
+        ),
+        @RouterOperation(
+            path = applicationsBaseUrl + "/searchByCriteria", 
+            method = RequestMethod.GET,
+            operation = @Operation(
+                operationId = "getByCriteriaPaginated",
+                tags = {"Solicitudes"},
+                summary = "Obtener todas las solicitudes de crédito por criteria",
+                description = "Retorna una lista con todos las solicitudes de crédito registradas que cumplan con los criterios",
+                parameters = {
+                    @Parameter(
+                        name = "userIdNumber", 
+                        description = "Número de identificación del usuario",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "integer", format = "int64")
+                    ),
+                    @Parameter(
+                        name = "loanTypeId", 
+                        description = "Tipo de crédito",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "integer", format = "int16")
+                    ),
+                    @Parameter(
+                        name = "loanStatusId", 
+                        description = "Estado del crédito",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "integer", format = "int16")
+                    ),
+                    @Parameter(
+                        name = "sortBy", 
+                        description = "Ordenado por",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                        name = "sortDirection", 
+                        description = "Sentido del ordenamiento",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                        name = "page", 
+                        description = "Número de página",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "integer", format = "int16")
+                    ),
+                    @Parameter(
+                        name = "size", 
+                        description = "Tamaño de página",
+                        in = ParameterIn.QUERY,
+                        required = false,
+                        schema = @Schema(type = "integer", format = "int16")
+                    )
+                },
+                responses = {
+                    @ApiResponse(
+                        responseCode = "200", 
+                        description = "Lista de solicitudes de crédito obtenida exitosamente",
+                        content = @Content(schema = @Schema(implementation = PageResult.class))
+                    )
+                }
+            )
         )
     })
     public RouterFunction<ServerResponse> routerFunction(Handler handler) {
         return route(GET(applicationsBaseUrl), handler::getAllApplications)
-                .andRoute(POST(applicationsBaseUrl), handler::createApplication);
-                // .and(route(GET("/api/otherusercase/path"), handler::listenGETOtherUseCase));
+            .andRoute(POST(applicationsBaseUrl), handler::createApplication)
+            .andRoute(GET(applicationsBaseUrl + "/searchByCriteria"), handler::getByCriteriaPaginated);
     }
 }

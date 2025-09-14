@@ -27,7 +27,5 @@ CREATE TABLE applications (
     loan_type_id INTEGER NOT NULL,
     loan_status_id INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (loan_type_id) REFERENCES loan_type (loan_type_id),
-    FOREIGN KEY (loan_status_id) REFERENCES loan_status (loan_status_id)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
