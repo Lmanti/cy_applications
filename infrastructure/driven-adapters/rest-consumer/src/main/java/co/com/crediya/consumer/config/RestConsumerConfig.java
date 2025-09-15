@@ -2,7 +2,6 @@ package co.com.crediya.consumer.config;
 
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -23,19 +22,16 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class RestConsumerConfig {
 
     public static final String CTX_AUTH_TOKEN = "AUTH_TOKEN";
-    private final String url;
-    private final int timeout;
+    private final RestConsumerProperties restConsumerProperties;
 
-    public RestConsumerConfig(@Value("${adapter.restconsumer.url}") String url,
-                              @Value("${adapter.restconsumer.timeout}") int timeout) {
-        this.url = url;
-        this.timeout = timeout;
+    public RestConsumerConfig(RestConsumerProperties restConsumerProperties) {
+        this.restConsumerProperties = restConsumerProperties;
     }
 
     @Bean
     public WebClient getWebClient(WebClient.Builder builder) {
         return builder
-            .baseUrl(url)
+            .baseUrl(restConsumerProperties.url())
             .defaultHeader(HttpHeaders.CONTENT_TYPE, "application/json")
             .clientConnector(getClientHttpConnector())
             .filter(authPropagationFilter())
@@ -49,10 +45,10 @@ public class RestConsumerConfig {
         return new ReactorClientHttpConnector(HttpClient.create()
                 .compress(true)
                 .keepAlive(true)
-                .option(CONNECT_TIMEOUT_MILLIS, timeout)
+                .option(CONNECT_TIMEOUT_MILLIS, restConsumerProperties.timeout())
                 .doOnConnected(connection -> {
-                    connection.addHandlerLast(new ReadTimeoutHandler(timeout, MILLISECONDS));
-                    connection.addHandlerLast(new WriteTimeoutHandler(timeout, MILLISECONDS));
+                    connection.addHandlerLast(new ReadTimeoutHandler(restConsumerProperties.timeout(), MILLISECONDS));
+                    connection.addHandlerLast(new WriteTimeoutHandler(restConsumerProperties.timeout(), MILLISECONDS));
                 }));
     }
 
@@ -74,14 +70,19 @@ public class RestConsumerConfig {
             if (existing != null && !existing.isBlank()) {
                 return next.exchange(request);
             }
+            
             String token = ctxView.hasKey(CTX_AUTH_TOKEN) ? ctxView.get(CTX_AUTH_TOKEN) : null;
-            if (token != null && !token.isBlank()) {
-                ClientRequest newReq = ClientRequest.from(request)
-                    .headers(h -> h.setBearerAuth(token))
-                    .build();
-                return next.exchange(newReq);
+            if (token == null || token.isBlank()) {
+                return next.exchange(request);
             }
-            return next.exchange(request);
+            
+            return next.exchange(
+                ClientRequest.from(request)
+                    .headers(headers -> {
+                        headers.setBearerAuth(token);
+                    })
+                    .build()
+            );
         });
     }
 

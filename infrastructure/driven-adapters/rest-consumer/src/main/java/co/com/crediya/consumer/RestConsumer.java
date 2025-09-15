@@ -34,13 +34,12 @@ public class RestConsumer implements UserGateway {
             });
     }
 
-    @CircuitBreaker(name = "getAllUsersBasicInfo" , fallbackMethod = "existByIdNumberFallback")
+    @CircuitBreaker(name = "getAllUsersBasicInfo" , fallbackMethod = "getAllUsersBasicInfoFallback")
     @Override
     public Flux<UserBasicInfo> getAllUsersBasicInfo() {
         log.info("Attempting to retrieve all users's basic info");      
         return client.get()
-            .uri(uriBuilder -> 
-                uriBuilder.path("basicInfo").build())
+            .uri("basicInfo")
             .retrieve()
             .bodyToFlux(UserBasicInfo.class)
             .onErrorMap(exception -> {
@@ -52,5 +51,10 @@ public class RestConsumer implements UserGateway {
     public Mono<Boolean> existByIdNumberFallback(Long userIdNumber, Exception e) {
         log.error("Circuit breaker fallback: Error checking if user exists: {}", e.getMessage());
         return Mono.error(new ServiceNotAvailabeException("Servicio de usuarios no disponible por el momento, por favor intente más tarde", e));
+    }
+
+    public Flux<UserBasicInfo> getAllUsersBasicInfoFallback(Exception e) {
+        log.error("Circuit breaker fallback: Error getting all users basic info: {}", e.getMessage());
+        return Flux.error(new ServiceNotAvailabeException("Servicio de usuarios no disponible por el momento, por favor intente más tarde", e));
     }
 }
