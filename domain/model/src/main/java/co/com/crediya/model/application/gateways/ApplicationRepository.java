@@ -10,8 +10,9 @@ import reactor.core.publisher.Mono;
 
 public interface ApplicationRepository {
     Flux<Application> getAllApplications();
-    Flux<Application> getApplicationsByUserIdNumber(Long userIdNumber);
+    Flux<Application> getApplicationsByUserEmail(String userEmail);
     Mono<Application> getApplicationsByApplicationId(UUID applicationId);
     Mono<Application> saveApplication(Mono<Application> application);
     Mono<PageResult<Application>> findByCriteria(SearchCriteria criteria);
+    Mono<Application> updateApplication(Mono<Application> application);
 }

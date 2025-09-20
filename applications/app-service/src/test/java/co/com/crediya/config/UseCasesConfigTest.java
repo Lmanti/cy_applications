@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 import co.com.crediya.model.application.gateways.ApplicationRepository;
+import co.com.crediya.model.application.gateways.NotificationsSQSGateway;
 import co.com.crediya.model.application.gateways.UserGateway;
 import co.com.crediya.model.loanstatus.gateways.LoanStatusRepository;
 import co.com.crediya.model.loantype.gateways.LoanTypeRepository;
@@ -60,6 +61,10 @@ public class UseCasesConfigTest {
         @Bean
         public UserGateway userGateway() {
             return Mockito.mock(UserGateway.class);
+        }
+
+        @Bean NotificationsSQSGateway notificationsSQSGateway() {
+            return Mockito.mock(NotificationsSQSGateway.class);
         }
     }
 

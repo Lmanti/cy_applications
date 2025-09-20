@@ -63,7 +63,7 @@ class RouterRestTest {
         ApplicationRecord applicationRecord = createSampleApplicationRecord();
 
         when(handler.createApplication(any())).thenReturn(
-            ServerResponse.created(URI.create("/applicationDetails/" + applicationRecord.applicationId()))
+            ServerResponse.created(URI.create("/detalleSolicitud/" + applicationRecord.applicationId()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(applicationRecord)
         );
@@ -83,7 +83,7 @@ class RouterRestTest {
     private ApplicationRecord createSampleApplicationRecord() {
         return new ApplicationRecord(
             UUID.randomUUID(),
-            123456789L,
+            "test@test.com",
             1000000.0,
             12.0,
             null, // Mock LoanType
@@ -93,7 +93,7 @@ class RouterRestTest {
 
     private CreateApplicationDTO createSampleCreateApplicationDTO() {
         return new CreateApplicationDTO(
-            123456789L,
+            123456789l,
             1000000.0,
             12.0,
             1 // LoanTypeId

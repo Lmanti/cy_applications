@@ -22,8 +22,8 @@ public class ApplicationEntity {
     @Id
     @Column("application_id")
     private UUID applicationId;
-    @Column("user_id_number")
-    private Long userIdNumber;
+    @Column("user_email")
+    private String userEmail;
     @Column("loan_amount")
     private Double loanAmount;
     @Column("loan_term")

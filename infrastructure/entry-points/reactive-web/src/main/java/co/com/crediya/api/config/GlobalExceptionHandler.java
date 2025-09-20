@@ -17,9 +17,9 @@ import java.time.LocalDateTime;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(InvalidDataException.class)
+    @ExceptionHandler(exception = { InvalidDataException.class, IllegalArgumentException.class })
     public Mono<ResponseEntity<ErrorResponse>> handleInvalidDataException(
-            InvalidDataException ex, ServerWebExchange exchange) {
+            Exception ex, ServerWebExchange exchange) {
         
         String path = exchange.getRequest().getPath().value();
         String traceId = exchange.getRequest().getId();

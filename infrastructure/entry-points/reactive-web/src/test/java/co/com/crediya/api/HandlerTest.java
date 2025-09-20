@@ -46,9 +46,9 @@ class HandlerTest {
 
     @BeforeEach
     void setUp() {
-        createApplicationDTO = new CreateApplicationDTO(123456789L, 1000000.0, 12.0, 1);
-        application = new Application(UUID.randomUUID(),123456789L, 1000000.0, 12.0, 1, 1);
-        applicationRecord = new ApplicationRecord(UUID.randomUUID(), 123456789L, 1000000.0, 12.0, null, null);
+        createApplicationDTO = new CreateApplicationDTO(123456789l, 1000000.0, 12.0, 1);
+        application = new Application(UUID.randomUUID(),123456789l, 1000000.0, 12.0, 1, 1);
+        applicationRecord = new ApplicationRecord(UUID.randomUUID(), "test@test.com", 1000000.0, 12.0, null, null);
     }
 
     @SuppressWarnings("unchecked")
@@ -65,7 +65,7 @@ class HandlerTest {
             .assertNext(serverResponse -> {
                 assertEquals(201, serverResponse.statusCode().value());
                 assertEquals(MediaType.APPLICATION_JSON, serverResponse.headers().getContentType());
-                assertEquals(URI.create("/applicationDetails/" + applicationRecord.applicationId()), serverResponse.headers().getLocation());
+                assertEquals(URI.create("/detalleSolicitud/" + applicationRecord.applicationId()), serverResponse.headers().getLocation());
             })
             .expectComplete();
     }

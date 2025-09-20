@@ -1,11 +1,15 @@
 package co.com.crediya.usecase.application;
 
 import co.com.crediya.model.application.Application;
-import co.com.crediya.model.application.exception.DataRetrievalException;
+import co.com.crediya.model.application.criteria.PageResult;
+import co.com.crediya.model.application.criteria.SearchCriteria;
 import co.com.crediya.model.application.exception.InvalidDataException;
 import co.com.crediya.model.application.gateways.ApplicationRepository;
+import co.com.crediya.model.application.gateways.NotificationsSQSGateway;
 import co.com.crediya.model.application.gateways.UserGateway;
 import co.com.crediya.model.application.record.ApplicationRecord;
+import co.com.crediya.model.application.record.ApplicationWithUserInfoRecord;
+import co.com.crediya.model.application.record.UserBasicInfo;
 import co.com.crediya.model.loanstatus.LoanStatus;
 import co.com.crediya.model.loanstatus.gateways.LoanStatusRepository;
 import co.com.crediya.model.loantype.LoanType;
@@ -21,8 +25,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -39,6 +46,8 @@ class ApplicationUseCaseTest {
     private LoanStatusRepository loanStatusRepository;
     @Mock
     private UserGateway userGateway;
+    @Mock
+    private NotificationsSQSGateway notificationsSQSGateway;
 
     @InjectMocks
     private ApplicationUseCase applicationUseCase;
@@ -47,19 +56,24 @@ class ApplicationUseCaseTest {
     private LoanStatus loanStatus1;
     private Application application1;
     private Application application2;
+    private Application application3;
     private ApplicationRecord applicationRecord1;
     private ApplicationRecord applicationRecord2;
+    private ApplicationRecord applicationRecord3;
+    private UserBasicInfo userBasicInfo1;
+    private PageResult<Application> pageResult;
 
     @BeforeEach
     void setUp() {
-        loanType1 = LoanType.builder().loanTypeId(1).name("Personal Loan").build();
+        loanType1 = LoanType.builder().loanTypeId(1).name("Personal Loan").interestRate(5.0).build();
         loanStatus1 = LoanStatus.builder().loanStatusId(1).name("Pending").build();
         UUID applicationId1 = UUID.randomUUID();
         UUID applicationId2 = UUID.randomUUID();
+        UUID applicationId3 = UUID.randomUUID();
 
         application1 = Application.builder()
                 .applicationId(applicationId1)
-                .userIdNumber(123456789L)
+                .userEmail("test1@example.com")
                 .loanAmount(10000.0)
                 .loanTerm(36.0)
                 .loanTypeId(1)
@@ -68,7 +82,17 @@ class ApplicationUseCaseTest {
 
         application2 = Application.builder()
                 .applicationId(applicationId2)
-                .userIdNumber(987654321L)
+                .userEmail("test2@example.com")
+                .loanAmount(20000.0)
+                .loanTerm(60.0)
+                .loanTypeId(1)
+                .loanStatusId(1)
+                .build();
+
+        application3 = Application.builder()
+                .applicationId(applicationId3)
+                .userIdNumber(123456789L)
+                .userEmail("test1@example.com")
                 .loanAmount(20000.0)
                 .loanTerm(60.0)
                 .loanTypeId(1)
@@ -77,18 +101,29 @@ class ApplicationUseCaseTest {
 
         applicationRecord1 = new ApplicationRecord(
                 applicationId1,
-                123456789L,
+                "test1@example.com",
                 10000.0,
                 36.0,
                 loanType1,
                 loanStatus1);
         applicationRecord2 = new ApplicationRecord(
                 applicationId2,
-                987654321L,
+                "test2@example.com",
                 20000.0,
                 60.0,
                 loanType1,
                 loanStatus1);
+        applicationRecord3 = new ApplicationRecord(
+                applicationId3,
+                "test1@example.com",
+                20000.0,
+                60.0,
+                loanType1,
+                loanStatus1);
+
+        userBasicInfo1 = new UserBasicInfo(123456789L, "John", "Doe", "test1@example.com", 50000.0);
+    
+        pageResult = new PageResult<>(List.of(application1), 1L, 0, 10);
     }
 
     @Test
@@ -106,16 +141,16 @@ class ApplicationUseCaseTest {
     }
 
     @Test
-    @DisplayName("Should get applications by userIdNumber successfully")
-    void shouldGetApplicationsByUserIdNumberSuccessfully() {
+    @DisplayName("Should get applications by userEmail successfully")
+    void shouldGetApplicationsByUserEmailSuccessfully() {
         // Arrange
-        Long userIdNumber = 123456789L;
+        String userEmail = "test1@example.com";
         when(loanTypeRepository.getAllLoanTypes()).thenReturn(Flux.just(loanType1));
         when(loanStatusRepository.getAllLoanStatuses()).thenReturn(Flux.just(loanStatus1));
-        when(applicationRepository.getApplicationsByUserIdNumber(userIdNumber)).thenReturn(Flux.just(application1));
+        when(applicationRepository.getApplicationsByUserEmail(userEmail)).thenReturn(Flux.just(application1));
 
         // Act & Assert
-        StepVerifier.create(applicationUseCase.getApplicationsByUserIdNumber(userIdNumber))
+        StepVerifier.create(applicationUseCase.getApplicationsByUserEmail(userEmail))
                 .expectNext(applicationRecord1)
                 .verifyComplete();
     }
@@ -141,15 +176,16 @@ class ApplicationUseCaseTest {
     void shouldSaveApplicationSuccessfully() {
         // Arrange
         when(loanTypeRepository.getLoanTypeById(anyInt())).thenReturn(Mono.just(loanType1));
-        when(userGateway.existByIdNumber(anyLong())).thenReturn(Mono.just(true));
+        when(userGateway.getUserByIdNumber(anyLong())).thenReturn(Mono.just(userBasicInfo1));
         when(loanStatusRepository.getLoanStatusById(anyInt())).thenReturn(Mono.just(loanStatus1));
-        when(applicationRepository.saveApplication(any(Mono.class))).thenReturn(Mono.just(application1));
+        when(applicationRepository.saveApplication(any(Mono.class))).thenReturn(Mono.just(application3));
+        when(userGateway.getRequestUserByToken()).thenReturn(Mono.just(userBasicInfo1));
 
         // Act
-        Mono<Application> applicationMono = Mono.just(application1);
+        Mono<Application> applicationMono = Mono.just(application3);
         // Act & Assert
         StepVerifier.create(applicationUseCase.saveApplication(applicationMono))
-                .expectNext(applicationRecord1)
+                .expectNext(applicationRecord3)
                 .verifyComplete();
     }
 
@@ -158,11 +194,12 @@ class ApplicationUseCaseTest {
     void shouldReturnErrorWhenUserDoesNotExist() {
         // Arrange
         when(loanTypeRepository.getLoanTypeById(anyInt())).thenReturn(Mono.just(loanType1));
-        when(userGateway.existByIdNumber(anyLong())).thenReturn(Mono.just(false));
+        when(userGateway.getUserByIdNumber(anyLong())).thenReturn(Mono.empty());
         when(loanStatusRepository.getLoanStatusById(anyInt())).thenReturn(Mono.just(loanStatus1));
-
+        when(userGateway.getRequestUserByToken()).thenReturn(Mono.just(userBasicInfo1));
+        
         // Act
-        Mono<Application> applicationMono = Mono.just(application1);
+        Mono<Application> applicationMono = Mono.just(application3);
 
         // Act & Assert
         StepVerifier.create(applicationUseCase.saveApplication(applicationMono))
@@ -171,19 +208,35 @@ class ApplicationUseCaseTest {
     }
 
     @Test
-    @DisplayName("Should return error when LoanStatus does not exist")
-    void shouldReturnErrorWhenLoanStatusDoesNotExist() {
+        @DisplayName("Should get paginated applications by criteria successfully")
+        void shouldGetByCriteriaPaginatedSuccessfully() {
         // Arrange
-        when(loanTypeRepository.getLoanTypeById(anyInt())).thenReturn(Mono.just(loanType1));
-        when(userGateway.existByIdNumber(anyLong())).thenReturn(Mono.just(true));
-        when(loanStatusRepository.getLoanStatusById(anyInt())).thenReturn(Mono.error(new DataRetrievalException("Estado de crédito con ID 1 no encontrado")));
+        SearchCriteria criteria = SearchCriteria.builder()
+                .page(0)
+                .size(10)
+                .sortBy("email")
+                .sortDirection("asc")
+                .filters(new HashMap<>())
+                .build();
 
-        // Act
-        Mono<Application> applicationMono = Mono.just(application1);
+        List<String> expectedEmails = List.of("test1@example.com");
+
+        when(applicationRepository.findByCriteria(any(SearchCriteria.class))).thenReturn(Mono.just(pageResult));
+        when(loanTypeRepository.getAllLoanTypes()).thenReturn(Flux.just(loanType1));
+        when(loanStatusRepository.getAllLoanStatuses()).thenReturn(Flux.just(loanStatus1));
+        when(userGateway.getUsersBasicInfo(expectedEmails)).thenReturn(Flux.just(userBasicInfo1));
 
         // Act & Assert
-        StepVerifier.create(applicationUseCase.saveApplication(applicationMono))
-            .expectError(DataRetrievalException.class)
-            .verify();
-    }
+        StepVerifier.create(applicationUseCase.getByCriteriaPaginated(criteria))
+                .expectNextMatches(actualPageResult -> {
+                        assertEquals(pageResult.getTotalElements(), actualPageResult.getTotalElements());
+                        assertEquals(pageResult.getCurrentPage(), actualPageResult.getCurrentPage());
+                        assertEquals(pageResult.getSize(), actualPageResult.getSize());
+                        List<ApplicationWithUserInfoRecord> expectedContent = actualPageResult.getContent();
+                        assertEquals(expectedContent.get(0).applicationId(), application1.getApplicationId());
+                        assertEquals(expectedContent.get(0).email(), application1.getUserEmail());
+                        return true;
+                })
+                .verifyComplete();
+        }
 }

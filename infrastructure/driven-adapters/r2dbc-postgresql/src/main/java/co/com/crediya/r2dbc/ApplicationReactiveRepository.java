@@ -9,5 +9,5 @@ import co.com.crediya.r2dbc.entity.ApplicationEntity;
 import reactor.core.publisher.Flux;
 
 public interface ApplicationReactiveRepository extends ReactiveCrudRepository<ApplicationEntity, UUID>, ReactiveQueryByExampleExecutor<ApplicationEntity> {
-    Flux<ApplicationEntity> findByUserIdNumber(Long userIdNumber);
+    Flux<ApplicationEntity> findByUserEmail(String userEmail);
 }

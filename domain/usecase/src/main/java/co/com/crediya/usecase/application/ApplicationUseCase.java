@@ -11,6 +11,7 @@ import co.com.crediya.model.application.criteria.PageResult;
 import co.com.crediya.model.application.criteria.SearchCriteria;
 import co.com.crediya.model.application.exception.InvalidDataException;
 import co.com.crediya.model.application.gateways.ApplicationRepository;
+import co.com.crediya.model.application.gateways.NotificationsSQSGateway;
 import co.com.crediya.model.application.gateways.UserGateway;
 import co.com.crediya.model.application.record.ApplicationRecord;
 import co.com.crediya.model.application.record.ApplicationWithUserInfoRecord;
@@ -29,6 +30,7 @@ public class ApplicationUseCase {
     private final LoanTypeRepository loanTypeRepository;
     private final LoanStatusRepository loanStatusRepository;
     private final UserGateway userGateway;
+    private final NotificationsSQSGateway notificationsSQSGateway;
 
     private enum LoanStatuses {
         PENDIENTE(1);
@@ -56,7 +58,7 @@ public class ApplicationUseCase {
                 return applicationRepository.getAllApplications()
                     .map(application -> new ApplicationRecord(
                         application.getApplicationId(),
-                        application.getUserIdNumber(),
+                        application.getUserEmail(),
                         application.getLoanAmount(),
                         application.getLoanTerm(),
                         loanTypeMap.get(application.getLoanTypeId()),
@@ -64,7 +66,7 @@ public class ApplicationUseCase {
             });
     }
 
-    public Flux<ApplicationRecord> getApplicationsByUserIdNumber(Long userIdNumber) {
+    public Flux<ApplicationRecord> getApplicationsByUserEmail(String userEmail) {
         return Flux.zip(
                 loanTypeRepository.getAllLoanTypes().collectMap(LoanType::getLoanTypeId),
                 loanStatusRepository.getAllLoanStatuses().collectMap(LoanStatus::getLoanStatusId)
@@ -73,10 +75,10 @@ public class ApplicationUseCase {
                 Map<Integer, LoanType> loanTypeMap = params.getT1();
                 Map<Integer, LoanStatus> loanStatusMap = params.getT2();
 
-                return applicationRepository.getApplicationsByUserIdNumber(userIdNumber)
+                return applicationRepository.getApplicationsByUserEmail(userEmail)
                     .map(application -> new ApplicationRecord(
                         application.getApplicationId(),
-                        application.getUserIdNumber(),
+                        application.getUserEmail(),
                         application.getLoanAmount(),
                         application.getLoanTerm(),
                         loanTypeMap.get(application.getLoanTypeId()),
@@ -96,7 +98,7 @@ public class ApplicationUseCase {
                 return applicationRepository.getApplicationsByApplicationId(applicationId)
                     .map(application -> new ApplicationRecord(
                         application.getApplicationId(),
-                        application.getUserIdNumber(),
+                        application.getUserEmail(),
                         application.getLoanAmount(),
                         application.getLoanTerm(),
                         loanTypeMap.get(application.getLoanTypeId()),
@@ -108,19 +110,23 @@ public class ApplicationUseCase {
         return application.flatMap(toSave ->
             Mono.zip(
                 loanTypeRepository.getLoanTypeById(toSave.getLoanTypeId()),
-                userGateway.existByIdNumber(toSave.getUserIdNumber()),
-                loanStatusRepository.getLoanStatusById(LoanStatuses.PENDIENTE.getValue())
+                userGateway.getUserByIdNumber(toSave.getUserIdNumber())
+                    .switchIfEmpty(Mono.error(new InvalidDataException("No existe un usuario con email " + toSave.getUserEmail()))),
+                loanStatusRepository.getLoanStatusById(LoanStatuses.PENDIENTE.getValue()),
+                userGateway.getRequestUserByToken()
             )
             .flatMap(params -> {
-                Boolean userExist = params.getT2();
+                LoanStatus pendingStatus = params.getT3();
+                UserBasicInfo authenticatedUser = params.getT4();
 
-                if (!userExist) return Mono.error(new InvalidDataException("No existe un usuario con número de identificación " + toSave.getUserIdNumber()));
+                if (!authenticatedUser.idNumber().equals(toSave.getUserIdNumber())) return Mono.error(new InvalidDataException("No se permite crear solicitudes para otro usuario diferente al autenticado."));
 
-                toSave.setLoanStatusId(params.getT3().getLoanStatusId());
+                toSave.setUserEmail(authenticatedUser.email());
+                toSave.setLoanStatusId(pendingStatus.getLoanStatusId());
                 return applicationRepository.saveApplication(Mono.just(toSave))
                     .map(savedApplication -> new ApplicationRecord(
                         savedApplication.getApplicationId(),
-                        savedApplication.getUserIdNumber(),
+                        savedApplication.getUserEmail(),
                         savedApplication.getLoanAmount(),
                         savedApplication.getLoanTerm(),
                         params.getT1(),
@@ -130,39 +136,43 @@ public class ApplicationUseCase {
     }
 
     public Mono<PageResult<ApplicationWithUserInfoRecord>> getByCriteriaPaginated(SearchCriteria criteria) {
-        return Mono.zip(
+        return applicationRepository.findByCriteria(criteria)
+            .flatMap(paginated -> {
+                List<String> usersEmails = paginated.getContent().stream().map(Application::getUserEmail).toList();
+
+                return Mono.zip(
                     loanTypeRepository.getAllLoanTypes().collectMap(LoanType::getLoanTypeId),
                     loanStatusRepository.getAllLoanStatuses().collectMap(LoanStatus::getLoanStatusId),
-                    userGateway.getAllUsersBasicInfo().collectMap(UserBasicInfo::idNumber)
+                    userGateway.getUsersBasicInfo(usersEmails).collectMap(UserBasicInfo::email)
                 )
-                .flatMap(params -> applicationRepository.findByCriteria(criteria)
-                    .map(paginated -> {
-                        Map<Integer, LoanType> loanTypeMap = params.getT1();
-                        Map<Integer, LoanStatus> loanStatusMap = params.getT2();
-                        Map<Long, UserBasicInfo> userBasicInfoMap = params.getT3();
+                .flatMap(params -> {
+                    Map<Integer, LoanType> loanTypeMap = params.getT1();
+                    Map<Integer, LoanStatus> loanStatusMap = params.getT2();
+                    Map<String, UserBasicInfo> userBasicInfoMap = params.getT3();
 
-                        List<ApplicationWithUserInfoRecord> transformedContent = paginated.getContent().stream()
-                            .map(application -> new ApplicationWithUserInfoRecord(
-                                application.getApplicationId(),
-                                application.getUserIdNumber(),
-                                userBasicInfoMap.get(application.getUserIdNumber()).email(),
-                                userBasicInfoMap.get(application.getUserIdNumber()).name(),
-                                userBasicInfoMap.get(application.getUserIdNumber()).lastname(),
-                                userBasicInfoMap.get(application.getUserIdNumber()).baseSalary(),
-                                application.getLoanAmount(),
-                                application.getLoanTerm(),
-                                loanTypeMap.get(application.getLoanTypeId()),
-                                loanStatusMap.get(application.getLoanStatusId()),
-                                calculateMonthlyPayment(application, loanTypeMap.get(application.getLoanTypeId()))
-                            )).toList();
-                        
-                        return new PageResult<ApplicationWithUserInfoRecord>(
+                    List<ApplicationWithUserInfoRecord> transformedContent = paginated.getContent().stream()
+                        .map(application -> new ApplicationWithUserInfoRecord(
+                            application.getApplicationId(),
+                            userBasicInfoMap.get(application.getUserEmail()).idNumber(),
+                            userBasicInfoMap.get(application.getUserEmail()).email(),
+                            userBasicInfoMap.get(application.getUserEmail()).name(),
+                            userBasicInfoMap.get(application.getUserEmail()).lastname(),
+                            userBasicInfoMap.get(application.getUserEmail()).baseSalary(),
+                            application.getLoanAmount(),
+                            application.getLoanTerm(),
+                            loanTypeMap.get(application.getLoanTypeId()),
+                            loanStatusMap.get(application.getLoanStatusId()),
+                            calculateMonthlyPayment(application, loanTypeMap.get(application.getLoanTypeId()))
+                        )).toList();
+
+                        return Mono.just(new PageResult<ApplicationWithUserInfoRecord>(
                             transformedContent,
                             paginated.getTotalElements(),
                             paginated.getCurrentPage(),
                             paginated.getSize()
-                        );
-                    }));
+                        ));
+                });
+            });
     }
 
     private Double calculateMonthlyPayment(Application application, LoanType loanType) {
@@ -174,5 +184,35 @@ public class ApplicationUseCase {
             .setScale(2, RoundingMode.HALF_UP);
 
         return roundedAmount.doubleValue();
+    }
+
+    public Mono<ApplicationRecord> updateApplicationStatus(Mono<Application> application) {
+        return application.flatMap(toEdit ->
+            applicationRepository.getApplicationsByApplicationId(toEdit.getApplicationId())
+                .switchIfEmpty(Mono.error(new InvalidDataException("No existe una solicitud de crédito con id: " + toEdit.getApplicationId())))
+            .flatMap(existing ->
+                Mono.zip(
+                    loanTypeRepository.getLoanTypeById(existing.getLoanTypeId())
+                        .switchIfEmpty(Mono.error(new InvalidDataException("No existe un tipo de crédito con id: " + existing.getLoanTypeId()))),
+                    loanStatusRepository.getLoanStatusById(toEdit.getLoanStatusId())
+                        .switchIfEmpty(Mono.error(new InvalidDataException("No existe un estado de crédito con id: " + toEdit.getLoanStatusId())))
+                ).flatMap(params -> {
+                    LoanType loanType = params.getT1();
+                    LoanStatus loanStatus = params.getT2();
+
+                    existing.setLoanStatusId(loanStatus.getLoanStatusId());
+
+                    return applicationRepository.updateApplication(Mono.just(existing))
+                        .map(savedApplication -> new ApplicationRecord(
+                            savedApplication.getApplicationId(),
+                            savedApplication.getUserEmail(),
+                            savedApplication.getLoanAmount(),
+                            savedApplication.getLoanTerm(),
+                            loanType,
+                            loanStatus));
+                })
+            )
+        );
+        // .doOnNext(notificationsSQSGateway::send);
     }
 }

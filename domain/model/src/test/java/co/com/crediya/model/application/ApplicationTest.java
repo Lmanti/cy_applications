@@ -19,7 +19,7 @@ class ApplicationTest {
         // Then
         assertNotNull(application);
         assertNull(application.getApplicationId());
-        assertNull(application.getUserIdNumber());
+        assertNull(application.getUserEmail());
         assertNull(application.getLoanAmount());
         assertNull(application.getLoanTerm());
         assertNull(application.getLoanTypeId());
@@ -31,18 +31,18 @@ class ApplicationTest {
     void shouldCreateApplicationWithAllArgsConstructor() {
         // Given
         UUID applicationId = UUID.randomUUID();
-        Long userIdNumber = 123456789L;
+        String email = "test@example.com";
         Double loanAmount = 10000.0;
         Double loanTerm = 36.0;
         Integer loanTypeId = 1;
         Integer loanStatusId = 2;
 
         // When
-        Application application = new Application(applicationId, userIdNumber, loanAmount, loanTerm, loanTypeId, loanStatusId);
+        Application application = new Application(applicationId, email, loanAmount, loanTerm, loanTypeId, loanStatusId);
 
         // Then
         assertEquals(applicationId, application.getApplicationId());
-        assertEquals(userIdNumber, application.getUserIdNumber());
+        assertEquals(email, application.getUserEmail());
         assertEquals(loanAmount, application.getLoanAmount());
         assertEquals(loanTerm, application.getLoanTerm());
         assertEquals(loanTypeId, application.getLoanTypeId());
@@ -54,19 +54,19 @@ class ApplicationTest {
     void shouldCreateApplicationWithBuilder() {
         // Given
         UUID applicationId = UUID.randomUUID();
-        Long userIdNumber = 987654321L;
+        String email = "builder@example.com";
         Double loanAmount = 20000.0;
 
         // When
         Application application = Application.builder()
                 .applicationId(applicationId)
-                .userIdNumber(userIdNumber)
+                .userEmail(email)
                 .loanAmount(loanAmount)
                 .build();
 
         // Then
         assertEquals(applicationId, application.getApplicationId());
-        assertEquals(userIdNumber, application.getUserIdNumber());
+        assertEquals(email, application.getUserEmail());
         assertEquals(loanAmount, application.getLoanAmount());
         assertNull(application.getLoanTerm());
         assertNull(application.getLoanTypeId());
@@ -79,7 +79,7 @@ class ApplicationTest {
         // Given
         Application original = Application.builder()
                 .applicationId(UUID.randomUUID())
-                .userIdNumber(111222333L)
+                .userEmail("original@example.com")
                 .loanAmount(5000.0)
                 .build();
 
@@ -91,7 +91,7 @@ class ApplicationTest {
 
         // Then
         assertEquals(original.getApplicationId(), copy.getApplicationId());
-        assertEquals(original.getUserIdNumber(), copy.getUserIdNumber());
+        assertEquals(original.getUserEmail(), copy.getUserEmail());
         assertEquals(6000.0, copy.getLoanAmount());
         assertEquals(24.0, copy.getLoanTerm());
         assertEquals(5000.0, original.getLoanAmount());
@@ -105,17 +105,17 @@ class ApplicationTest {
         // Given
         Application application = new Application();
         UUID applicationId = UUID.randomUUID();
-        Long userIdNumber = 555666777L;
+        String email = "setter@example.com";
         Double loanAmount = 7500.0;
 
         // When
         application.setApplicationId(applicationId);
-        application.setUserIdNumber(userIdNumber);
+        application.setUserEmail(email);
         application.setLoanAmount(loanAmount);
 
         // Then
         assertEquals(applicationId, application.getApplicationId());
-        assertEquals(userIdNumber, application.getUserIdNumber());
+        assertEquals(email, application.getUserEmail());
         assertEquals(loanAmount, application.getLoanAmount());
     }
 
@@ -125,18 +125,18 @@ class ApplicationTest {
         // Given
         Application application = Application.builder()
                 .applicationId(UUID.randomUUID())
-                .userIdNumber(123456789L)
+                .userEmail("null@example.com")
                 .loanAmount(10000.0)
                 .build();
 
         // When
         application.setApplicationId(null);
-        application.setUserIdNumber(null);
+        application.setUserEmail(null);
         application.setLoanAmount(null);
 
         // Then
         assertNull(application.getApplicationId());
-        assertNull(application.getUserIdNumber());
+        assertNull(application.getUserEmail());
         assertNull(application.getLoanAmount());
     }
 
@@ -145,20 +145,20 @@ class ApplicationTest {
     void shouldCreateApplicationAndVerifyWithStepVerifier() {
         // Given
         UUID applicationId = UUID.randomUUID();
-        Long userIdNumber = 123456789L;
+        String email = "stepverifier@example.com";
         Double loanAmount = 10000.0;
         Double loanTerm = 36.0;
         Integer loanTypeId = 1;
         Integer loanStatusId = 2;
 
         // When
-        Application application = new Application(applicationId, userIdNumber, loanAmount, loanTerm, loanTypeId, loanStatusId);
+        Application application = new Application(applicationId, email, loanAmount, loanTerm, loanTypeId, loanStatusId);
 
         // Then
         StepVerifier.create(reactor.core.publisher.Mono.just(application))
                 .assertNext(app -> {
                     assertEquals(applicationId, app.getApplicationId());
-                    assertEquals(userIdNumber, app.getUserIdNumber());
+                    assertEquals(email, app.getUserEmail());
                     assertEquals(loanAmount, app.getLoanAmount());
                     assertEquals(loanTerm, app.getLoanTerm());
                     assertEquals(loanTypeId, app.getLoanTypeId());
@@ -172,13 +172,13 @@ class ApplicationTest {
     void shouldBuildApplicationAndVerifyWithStepVerifier() {
         // Given
         UUID applicationId = UUID.randomUUID();
-        Long userIdNumber = 987654321L;
+        String email = "stepverifierbuilder@example.com";
         Double loanAmount = 20000.0;
 
         // When
         Application application = Application.builder()
                 .applicationId(applicationId)
-                .userIdNumber(userIdNumber)
+                .userEmail(email)
                 .loanAmount(loanAmount)
                 .build();
 
@@ -186,7 +186,7 @@ class ApplicationTest {
         StepVerifier.create(reactor.core.publisher.Mono.just(application))
                 .assertNext(app -> {
                     assertEquals(applicationId, app.getApplicationId());
-                    assertEquals(userIdNumber, app.getUserIdNumber());
+                    assertEquals(email, app.getUserEmail());
                     assertEquals(loanAmount, app.getLoanAmount());
                     assertNull(app.getLoanTerm());
                     assertNull(app.getLoanTypeId());

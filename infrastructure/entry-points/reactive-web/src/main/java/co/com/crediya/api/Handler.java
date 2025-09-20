@@ -12,6 +12,7 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
 import co.com.crediya.api.dto.CreateApplicationDTO;
+import co.com.crediya.api.dto.UpdateApplicationStatusDTO;
 import co.com.crediya.api.mapper.ApplicationDTOMapper;
 import co.com.crediya.model.application.criteria.SearchCriteria;
 import co.com.crediya.usecase.application.ApplicationUseCase;
@@ -27,7 +28,7 @@ public class Handler {
         return serverRequest.bodyToMono(CreateApplicationDTO.class)
             .map(applicationMapper::toModel)
             .transform(applicationUseCase::saveApplication)
-            .flatMap(createdApplication -> ServerResponse.created(URI.create("/applicationDetails/" + createdApplication.applicationId()))
+            .flatMap(createdApplication -> ServerResponse.created(URI.create("/detalleSolicitud/" + createdApplication.applicationId()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(createdApplication));
     }
@@ -49,8 +50,8 @@ public class Handler {
         return Mono.fromCallable(() -> {
             Map<String, Object> filters = new HashMap<>();
             
-            request.queryParam("userIdNumber")
-                .ifPresent(value -> filters.put("user_id_number", Long.valueOf(value)));
+            request.queryParam("userEmail")
+                .ifPresent(value -> filters.put("user_email", String.valueOf(value)));
             request.queryParam("loanTypeId")
                 .ifPresent(value -> filters.put("loan_type_id", Integer.valueOf(value)));
             request.queryParam("loanStatusId")
@@ -69,5 +70,14 @@ public class Handler {
                 .size(size)
                 .build();
         });
+    }
+
+    public Mono<ServerResponse> updateApplicationStatus(ServerRequest serverRequest) {
+        return serverRequest.bodyToMono(UpdateApplicationStatusDTO.class)
+            .map(applicationMapper::toModel)
+            .transform(applicationUseCase::updateApplicationStatus)
+            .flatMap(updatedApplication -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updatedApplication));
     }
 }

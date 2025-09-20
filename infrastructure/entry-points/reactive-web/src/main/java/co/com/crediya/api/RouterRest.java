@@ -7,6 +7,7 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
 import co.com.crediya.api.dto.CreateApplicationDTO;
+import co.com.crediya.api.dto.UpdateApplicationStatusDTO;
 import co.com.crediya.model.application.Application;
 import co.com.crediya.model.application.criteria.PageResult;
 import co.com.crediya.model.application.record.ApplicationRecord;
@@ -21,6 +22,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
+import static org.springframework.web.reactive.function.server.RequestPredicates.PUT;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
 import org.springdoc.core.annotations.RouterOperation;
@@ -76,7 +78,7 @@ public class RouterRest {
             )
         ),
         @RouterOperation(
-            path = applicationsBaseUrl + "/searchByCriteria", 
+            path = applicationsBaseUrl + "/filtrarPaginado", 
             method = RequestMethod.GET,
             operation = @Operation(
                 operationId = "getByCriteriaPaginated",
@@ -85,11 +87,11 @@ public class RouterRest {
                 description = "Retorna una lista con todos las solicitudes de crédito registradas que cumplan con los criterios",
                 parameters = {
                     @Parameter(
-                        name = "userIdNumber", 
-                        description = "Número de identificación del usuario",
+                        name = "userEmail", 
+                        description = "E-mail del usuario",
                         in = ParameterIn.QUERY,
                         required = false,
-                        schema = @Schema(type = "integer", format = "int64")
+                        schema = @Schema(type = "string")
                     ),
                     @Parameter(
                         name = "loanTypeId", 
@@ -142,11 +144,38 @@ public class RouterRest {
                     )
                 }
             )
+        ),
+        @RouterOperation(
+            path = applicationsBaseUrl, 
+            method = RequestMethod.PUT,
+            operation = @Operation(
+                operationId = "updateApplicationStatus",
+                tags = {"Solicitudes"},
+                summary = "Actualizar el estado de una solicitud de crédito",
+                description = "Actualiza el estado de una solicitud de crédito en el sistema",
+                security = { @SecurityRequirement(name = "bearer-jwt") },
+                requestBody = @RequestBody(
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = UpdateApplicationStatusDTO.class))
+                ),
+                responses = {
+                    @ApiResponse(
+                        responseCode = "201", 
+                        description = "Solicitud de crédito actualizada exitosamente",
+                        content = @Content(schema = @Schema(implementation = ApplicationRecord.class))
+                    ),
+                    @ApiResponse(
+                        responseCode = "400", 
+                        description = "Datos de solicitud de crédito inválidos"
+                    )
+                }
+            )
         )
     })
     public RouterFunction<ServerResponse> routerFunction(Handler handler) {
         return route(GET(applicationsBaseUrl), handler::getAllApplications)
             .andRoute(POST(applicationsBaseUrl), handler::createApplication)
-            .andRoute(GET(applicationsBaseUrl + "/searchByCriteria"), handler::getByCriteriaPaginated);
+            .andRoute(GET(applicationsBaseUrl + "/filtrarPaginado"), handler::getByCriteriaPaginated)
+            .andRoute(PUT(applicationsBaseUrl), handler::updateApplicationStatus);
     }
 }

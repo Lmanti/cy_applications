@@ -7,7 +7,7 @@ import co.com.crediya.model.loantype.LoanType;
 
 public record ApplicationRecord (
     UUID applicationId,
-    Long userIdNumber,
+    String userEmail,
     Double loanAmount,
     Double loanTerm,
     LoanType loanType,

@@ -1,5 +1,8 @@
 server:
   port: ${SERVER_PORT:8080}
+security:
+  jwt:
+    secret: ${JWT_SECRET}
 spring:
   application:
     name: "cy_applications"
@@ -16,18 +19,22 @@ spring:
     pool:
       initial-size: 5
       max-size: 20
-      max-idle-time: 30m
+      max-idle-time: "30m"
   sql:
     init:
       mode: ${SPRING_SQL_INIT_MODE:always}
-      schema-locations: classpath:schema.sql
-      data-locations: classpath:data.sql
+      schema-locations: "classpath:schema.sql"
+      data-locations: "classpath:data.sql"
   profiles:
     include: null
 adapter:
   restconsumer:
     timeout: 5000
     url: ${ADAPTER_RESTCONSUMER_URL:http://localhost:8080/api/v1/usuarios/}
+  sqs:
+    region: ${ADAPTER_SQS_NOTIFICATIONS_REGION:us-east-1}
+    queueUrl: ${ADAPTER_SQS_NOTIFICATIONS_URL:http://localhost:4566/000000000000/sample}
+    endpoint: ${ADAPTER_SQS_NOTIFICATIONS_ENDPOINT:http://localhost:4566}
 management:
   health:
     circuitbreakers:
@@ -62,18 +69,15 @@ resilience4j:
         minimumNumberOfCalls: 10
         waitDurationInOpenState: "10s"
 cors:
-  allowed-origins: "http://localhost:4200,http://localhost:8080"
-# logging:
-#   level:
-#     io.r2dbc.postgresql.QUERY: DEBUG
+  allowed-origins: ${CORS_ALLOWED-ORIGINS:http://localhost:4200,http://localhost:8080}
 springdoc:
   api-docs:
-    path: /api-docs
+    path: "/api-docs"
   swagger-ui:
-    path: /swagger-ui.html
-    operationsSorter: method
-    tagsSorter: alpha
-    docExpansion: none
-  packages-to-scan: co.com.crediya.api
+    path: "/swagger-ui.html"
+    operationsSorter: "method"
+    tagsSorter: "alpha"
+    docExpansion: "none"
+  packages-to-scan: "co.com.crediya.api"
   webjars:
-    prefix: /webjars
+    prefix: "/webjars"

@@ -35,11 +35,11 @@ public class ApplicationReactiveRepositoryAdapter extends ReactiveAdapterOperati
     private final DatabaseClient databaseClient;
 
     private static final Set<String> ALLOWED_COLUMNS = Set.of(
-        "user_id_number", "loan_type_id", "loan_status_id", "loan_amount"
+        "user_email", "loan_type_id", "loan_status_id"
     );
 
     private static final Set<String> ALLOWED_SORT_COLUMNS = Set.of(
-        "application_id", "user_id_number", "loan_amount", "loan_term"
+        "application_id", "user_email", "loan_amount", "loan_term"
     );
 
     public ApplicationReactiveRepositoryAdapter(
@@ -69,16 +69,16 @@ public class ApplicationReactiveRepositoryAdapter extends ReactiveAdapterOperati
 
     @Override
     @Transactional(readOnly = true)
-    public Flux<Application> getApplicationsByUserIdNumber(Long userIdNumber) {
-        log.info("Searching applications of user with ID number: {}", userIdNumber);
+    public Flux<Application> getApplicationsByUserEmail(String userEmail) {
+        log.info("Searching applications of user with email: {}", userEmail);
     
-        return repository.findByUserIdNumber(userIdNumber)
-            .doOnNext(entities -> log.debug("Found applications entites of user with ID number {}", userIdNumber))
+        return repository.findByUserEmail(userEmail)
+            .doOnNext(entities -> log.debug("Found applications entites of user with email {}", userEmail))
             .map(this::toEntity)
-            .doOnNext(entities -> log.info("Successfully mapped applications of user with ID number {}", userIdNumber))
+            .doOnNext(entities -> log.info("Successfully mapped applications of user with email {}", userEmail))
             .onErrorMap(ex -> {
-                log.error("Error retrieving applications of user with ID number {}: {}", userIdNumber, ex.getMessage(), ex);
-                return new DataRetrievalException("Error consultando las solicitudes del usuario con identificación " + userIdNumber, ex);
+                log.error("Error retrieving applications of user with email {}: {}", userEmail, ex.getMessage(), ex);
+                return new DataRetrievalException("Error consultando las solicitudes del usuario con email " + userEmail, ex);
             });
     }
 
@@ -190,11 +190,27 @@ public class ApplicationReactiveRepositoryAdapter extends ReactiveAdapterOperati
     private ApplicationEntity mapRow(Row row) {
         ApplicationEntity entity = new ApplicationEntity();
         entity.setApplicationId(row.get("application_id", UUID.class));
-        entity.setUserIdNumber(row.get("user_id_number", Long.class));
+        entity.setUserEmail(row.get("user_email", String.class));
         entity.setLoanAmount(row.get("loan_amount", Double.class));
         entity.setLoanTerm(row.get("loan_term", Double.class));
         entity.setLoanTypeId(row.get("loan_type_id", Integer.class));
         entity.setLoanStatusId(row.get("loan_status_id", Integer.class));
         return entity;
+    }
+
+    @Override
+    public Mono<Application> updateApplication(Mono<Application> application) {
+        return application
+            .doOnNext(applicationData -> log.info("Attempting to update an application: {}", applicationData.getApplicationId()))
+            .flatMap(applicationData -> 
+                repository.save(toData(applicationData))
+                    .doOnNext(updatedEntity -> log.debug("Application entity updated: {}", updatedEntity.getApplicationId()))
+                    .map(this::toEntity)
+                    .doOnNext(updatedApplication -> log.info("Application successfully updated: {}", updatedApplication.getApplicationId()))
+                    .onErrorMap(ex -> {
+                        log.error("Error updating an application: {}", ex.getMessage(), ex);
+                        return new DataPersistenceException("Error intentando editar la solicitud", ex);
+                    })
+            );
     }
 }

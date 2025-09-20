@@ -21,7 +21,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE applications (
     application_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id_number BIGINT NOT NULL,
+    user_email VARCHAR(50) NOT NULL,
     loan_amount NUMERIC(12, 2) NOT NULL,
     loan_term NUMERIC(5, 2) NOT NULL,
     loan_type_id INTEGER NOT NULL,
