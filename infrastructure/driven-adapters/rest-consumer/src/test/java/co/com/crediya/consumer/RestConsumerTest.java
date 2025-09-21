@@ -47,7 +47,7 @@ class RestConsumerTest {
     @BeforeEach
     void setUp() {
         userEmail = "test@example.com";
-        userBasicInfo = new UserBasicInfo(123L, "User", "Test", userEmail, 1000.0);
+        userBasicInfo = new UserBasicInfo(123L, "User", "Test", userEmail, 1000.0, "Cédula", "CLIENTE");
         userEmails = List.of(userEmail);
     }
 

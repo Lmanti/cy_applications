@@ -12,6 +12,7 @@ import co.com.crediya.api.dto.ErrorResponse;
 import co.com.crediya.model.application.exception.DataPersistenceException;
 import co.com.crediya.model.application.exception.InvalidDataException;
 import co.com.crediya.model.application.exception.ServiceNotAvailabeException;
+import co.com.crediya.model.application.exception.UnauthorizedException;
 
 import java.time.LocalDateTime;
 
@@ -41,6 +42,19 @@ public class GlobalExceptionHandler {
                 path, ex.getMessage(), HttpStatus.FORBIDDEN, traceId);
         
         return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse));
+    }
+
+    @ExceptionHandler(exception = UnauthorizedException.class)
+    public Mono<ResponseEntity<ErrorResponse>> handleInvalidCredentialsException(
+        UnauthorizedException ex, ServerWebExchange exchange) {
+        
+        String path = exchange.getRequest().getPath().value();
+        String traceId = exchange.getRequest().getId();
+        
+        ErrorResponse errorResponse = buildErrorResponse(
+                path, ex.getMessage(), HttpStatus.UNAUTHORIZED, traceId);
+        
+        return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse));
     }
     
     @ExceptionHandler(DataPersistenceException.class)

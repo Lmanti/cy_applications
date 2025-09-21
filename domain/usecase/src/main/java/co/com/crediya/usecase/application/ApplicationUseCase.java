@@ -10,6 +10,7 @@ import co.com.crediya.model.application.Application;
 import co.com.crediya.model.application.criteria.PageResult;
 import co.com.crediya.model.application.criteria.SearchCriteria;
 import co.com.crediya.model.application.exception.InvalidDataException;
+import co.com.crediya.model.application.exception.UnauthorizedException;
 import co.com.crediya.model.application.gateways.ApplicationRepository;
 import co.com.crediya.model.application.gateways.NotificationsSQSGateway;
 import co.com.crediya.model.application.gateways.UserGateway;
@@ -44,6 +45,10 @@ public class ApplicationUseCase {
         public int getValue() {
             return value;
         }
+    }
+
+    private enum Roles {
+        CLIENTE, ASESOR, ADMIN;
     }
 
     public Flux<ApplicationRecord> getAllApplications() {
@@ -119,6 +124,7 @@ public class ApplicationUseCase {
                 LoanStatus pendingStatus = params.getT3();
                 UserBasicInfo authenticatedUser = params.getT4();
 
+                if (!authenticatedUser.roleName().equals(Roles.CLIENTE.name())) return Mono.error(new UnauthorizedException("Para poder crear una solicitud necesita ser Cliente."));
                 if (!authenticatedUser.idNumber().equals(toSave.getUserIdNumber())) return Mono.error(new InvalidDataException("No se permite crear solicitudes para otro usuario diferente al autenticado."));
 
                 toSave.setUserEmail(authenticatedUser.email());
@@ -186,7 +192,7 @@ public class ApplicationUseCase {
         return roundedAmount.doubleValue();
     }
 
-    public Mono<ApplicationRecord> updateApplicationStatus(Mono<Application> application) {
+    public Mono<ApplicationWithUserInfoRecord> updateApplicationStatus(Mono<Application> application) {
         return application.flatMap(toEdit ->
             applicationRepository.getApplicationsByApplicationId(toEdit.getApplicationId())
                 .switchIfEmpty(Mono.error(new InvalidDataException("No existe una solicitud de crédito con id: " + toEdit.getApplicationId())))
@@ -195,24 +201,38 @@ public class ApplicationUseCase {
                     loanTypeRepository.getLoanTypeById(existing.getLoanTypeId())
                         .switchIfEmpty(Mono.error(new InvalidDataException("No existe un tipo de crédito con id: " + existing.getLoanTypeId()))),
                     loanStatusRepository.getLoanStatusById(toEdit.getLoanStatusId())
-                        .switchIfEmpty(Mono.error(new InvalidDataException("No existe un estado de crédito con id: " + toEdit.getLoanStatusId())))
+                        .switchIfEmpty(Mono.error(new InvalidDataException("No existe un estado de crédito con id: " + toEdit.getLoanStatusId()))),
+                    userGateway.getRequestUserByToken(),
+                    userGateway.getUserByEmail(existing.getUserEmail())
+                        .switchIfEmpty(Mono.error(new InvalidDataException("No existe un usuario con email " + existing.getUserEmail())))
                 ).flatMap(params -> {
                     LoanType loanType = params.getT1();
                     LoanStatus loanStatus = params.getT2();
+                    UserBasicInfo authenticatedUser = params.getT3();
+                    UserBasicInfo applicationUser = params.getT4();
+
+                    if (!authenticatedUser.roleName().equals(Roles.ASESOR.name())) return Mono.error(new UnauthorizedException("Para poder cambiar el estado de una solicitud necesita ser Asesor."));
 
                     existing.setLoanStatusId(loanStatus.getLoanStatusId());
 
                     return applicationRepository.updateApplication(Mono.just(existing))
-                        .map(savedApplication -> new ApplicationRecord(
+                        .map(savedApplication -> new ApplicationWithUserInfoRecord(
                             savedApplication.getApplicationId(),
+                            applicationUser.idNumber(),
                             savedApplication.getUserEmail(),
+                            applicationUser.name(),
+                            applicationUser.lastname(),
+                            applicationUser.baseSalary(),
                             savedApplication.getLoanAmount(),
                             savedApplication.getLoanTerm(),
                             loanType,
-                            loanStatus));
+                            loanStatus,
+                            calculateMonthlyPayment(existing, loanType))
+                        )
+                        .flatMap(applicationRecord -> notificationsSQSGateway.send(applicationRecord)
+                            .thenReturn(applicationRecord));
                 })
             )
         );
-        // .doOnNext(notificationsSQSGateway::send);
     }
 }

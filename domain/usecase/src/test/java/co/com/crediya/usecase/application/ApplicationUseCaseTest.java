@@ -121,7 +121,7 @@ class ApplicationUseCaseTest {
                 loanType1,
                 loanStatus1);
 
-        userBasicInfo1 = new UserBasicInfo(123456789L, "John", "Doe", "test1@example.com", 50000.0);
+        userBasicInfo1 = new UserBasicInfo(123456789L, "John", "Doe", "test1@example.com", 50000.0, "Cédula", "CLIENTE");
     
         pageResult = new PageResult<>(List.of(application1), 1L, 0, 10);
     }

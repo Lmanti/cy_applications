@@ -5,5 +5,7 @@ public record UserBasicInfo(
     String name,
     String lastname,
     String email,
-    Double baseSalary
+    Double baseSalary,
+    String idTypeName,
+    String roleName
 ) {}

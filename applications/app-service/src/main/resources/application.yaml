@@ -1,8 +1,5 @@
 server:
   port: ${SERVER_PORT:8080}
-security:
-  jwt:
-    secret: ${JWT_SECRET}
 spring:
   application:
     name: "cy_applications"
@@ -35,6 +32,8 @@ adapter:
     region: ${ADAPTER_SQS_NOTIFICATIONS_REGION:us-east-1}
     queueUrl: ${ADAPTER_SQS_NOTIFICATIONS_URL:http://localhost:4566/000000000000/sample}
     endpoint: ${ADAPTER_SQS_NOTIFICATIONS_ENDPOINT:http://localhost:4566}
+    accessKeyId: ${AWS_MESSAGING_ACCESS_KEY_ID}
+    secretAccessKey: ${AWS_MESSAGING_SECRET_ACCESS_KEY}
 management:
   health:
     circuitbreakers:

@@ -2,7 +2,7 @@ package co.com.crediya.sqs.sender;
 
 import co.com.crediya.model.application.exception.SQSMessagingException;
 import co.com.crediya.model.application.gateways.NotificationsSQSGateway;
-import co.com.crediya.model.application.record.ApplicationRecord;
+import co.com.crediya.model.application.record.ApplicationWithUserInfoRecord;
 import co.com.crediya.sqs.sender.config.SQSSenderProperties;
 import co.com.crediya.sqs.sender.utility.JsonConverter;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class SQSSender implements NotificationsSQSGateway {
     private final JsonConverter jsonConverter;
 
     @Override
-    public Mono<String> send(ApplicationRecord updatedApplication) {
+    public Mono<String> send(ApplicationWithUserInfoRecord updatedApplication) {
         return Mono.fromCallable(() -> buildRequest(updatedApplication))
             .flatMap(request -> Mono.fromFuture(client.sendMessage(request))
                 .onErrorResume(e -> {
@@ -34,7 +34,7 @@ public class SQSSender implements NotificationsSQSGateway {
             .map(SendMessageResponse::messageId);
     }
 
-    private SendMessageRequest buildRequest(ApplicationRecord message) {
+    private SendMessageRequest buildRequest(ApplicationWithUserInfoRecord message) {
         String jsonMessage = jsonConverter.toJson(message);
         
         return SendMessageRequest.builder()

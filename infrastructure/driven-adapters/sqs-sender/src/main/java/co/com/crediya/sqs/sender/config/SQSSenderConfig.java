@@ -3,11 +3,14 @@ package co.com.crediya.sqs.sender.config;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
 import software.amazon.awssdk.auth.credentials.ContainerCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.metrics.MetricPublisher;
@@ -26,12 +29,15 @@ public class SQSSenderConfig {
                 .endpointOverride(resolveEndpoint(properties))
                 .region(Region.of(properties.region()))
                 .overrideConfiguration(o -> o.addMetricPublisher(publisher))
-                .credentialsProvider(getProviderChain())
+                .credentialsProvider(getProviderChain(properties))
                 .build();
     }
 
-    private AwsCredentialsProviderChain getProviderChain() {
+    private AwsCredentialsProviderChain getProviderChain(SQSSenderProperties properties) {
         return AwsCredentialsProviderChain.builder()
+                .addCredentialsProvider(StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(properties.accessKeyId(), properties.secretAccessKey())
+                ))
                 .addCredentialsProvider(EnvironmentVariableCredentialsProvider.create())
                 .addCredentialsProvider(SystemPropertyCredentialsProvider.create())
                 .addCredentialsProvider(WebIdentityTokenFileCredentialsProvider.create())
